@@ -54,24 +54,27 @@ void setup() {
 void loop() {
   // Listen for incoming clients:
   EthernetClient client = server.available();
+  size_t i = 0, j = 0;
   if (client) {
     // Read the request data:
+    String method = "";
     String request = "";
     while (client.connected()&& client.available()) {
       char c = client.read();
-      request += c;
+      if (i < 4) method += c;
+      if (c == '\n') j++;
+      if (j >= 8) request += c;
+      i++;
     }
-    Serial.println(request);
-    parseRequest(&request, client);
+    parseRequest(&request, &method, client);
     sendHTMLPage(client);
     client.stop();
   }
 }
 
-void parseRequest(String* request, EthernetClient client) {
-  if ((*request).indexOf("POST") < 0) return;
-  String path = (*request).substring((*request).indexOf("button=") + 7);
-  Serial.println(path);
+void parseRequest(String* request, String* method, EthernetClient client) {
+  if (method->indexOf("POST") < 0) return;
+  String path = request->substring(request->indexOf("button=") + 7);
   if (path[0] >= '0' && path[0] <= '9') {
     int btnNb = path[0] - '0';
     buttons[btnNb] = !buttons[btnNb];
@@ -84,10 +87,13 @@ void sendHTMLPage(EthernetClient client) {
   client.println("HTTP/1.1 200 OK");
   client.println();
   client.println("<html><head><title>Switch pilot</title><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
-  client.println("<link rel=\"stylesheet\" href=\"style.css\"/></head>");
+  client.println("<style>body{display:flex;justify-content:center;align-items:center;flex-direction:column}form,div{display:flex;gap:6em}div{flex-direction:column;gap:3em}h1{margin:1em;font-size:2em;font-weight:700}.allume{background:#E5BE01}");
+  client.println("button{padding:1.5em 2.5em;border:none}</style></head>");
   client.println("<body><h1>Switch pilot</h1><form action=\"/\" method=\"post\">");
   for (int j = 0; j < 2; j++) { 
-    client.println("<div>");
+    client.println("<div><h2>");
+    client.println(j == 0 ? "Coulomb" : "Laplace");
+    client.println("</h2>");
     for (int i = 0; i < 4; i++) {
       sprintf(button, "<button type=\"submit\" name=\"button\" value=\"%d\" class=\"%s\">%s</button>", i + j * 4, buttons[i+j*4] ? "allume" : "eteint", labels[i+j*4]);
       client.println(button);
